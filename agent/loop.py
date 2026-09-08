@@ -125,18 +125,21 @@ def dispatch_tool_call(name: str, tool_input: dict) -> dict:
         return error("validation", f"unknown tool: {name}", False)
 
 
-def run_conversation(user_message: str, max_turns: int = 8) -> list[dict]:
+def run_conversation(user_message: str, max_turns: int = 8, system: str = None) -> list[dict]:
     """Run the agentic loop until Claude signals end_turn, max_tokens is
-    hit, or max_turns is exhausted -- see module docstring for the shape."""
+    hit, or max_turns is exhausted -- see module docstring for the shape.
+
+    `system` is optional and unused by main.py; it exists so a hostile
+    system prompt can be injected for the Part 4 stretch-goal test
+    (confirming the code-level gates hold regardless of what a system
+    prompt claims)."""
     messages = [{"role": "user", "content": user_message}]
 
     for turn in range(max_turns):
-        response = client.messages.create(
-            model=MODEL,
-            max_tokens=1024,
-            tools=TOOLS,
-            messages=messages,
-        )
+        kwargs = dict(model=MODEL, max_tokens=1024, tools=TOOLS, messages=messages)
+        if system:
+            kwargs["system"] = system
+        response = client.messages.create(**kwargs)
         messages.append({"role": "assistant", "content": response.content})
 
         if response.stop_reason == "end_turn":
